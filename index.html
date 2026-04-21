@@ -112,7 +112,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.7)}
 <script>
 
 // ═══════════════════════════════════════
-// LIFE OS 2026 — v3 Brighter + Notifs
+// LIFE OS 2026 — v4 Firebase Sync
 // ═══════════════════════════════════════
 
 const SY=2026;
@@ -135,18 +135,142 @@ const HABITS=[
   {id:"journal",label:"Journal de bord",desc:"Écriture quotidienne",icon:"📝",color:"#34d399"},
 ];
 
-const db={
+// ─── localStorage (cache local offline-first) ───
+const ldb={
   g(k,f){try{const v=localStorage.getItem("lo_"+k);return v?JSON.parse(v):f}catch{return f}},
   s(k,v){try{localStorage.setItem("lo_"+k,JSON.stringify(v))}catch(e){console.error(e)}}
 };
+// Alias rétrocompatible (utilisé par requestNotif)
+const db=ldb;
+
+// ─── Firebase Firestore ───
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyC64EdT7QeWU2IeMIdsmiCnvF8DwWTDgQ4",
+  authDomain:"cockpit-linkeo.firebaseapp.com",
+  projectId:"cockpit-linkeo",
+  storageBucket:"cockpit-linkeo.firebasestorage.app",
+  messagingSenderId:"846460957943",
+  appId:"1:846460957943:web:91dbb89246a7b3bc150ff2"
+};
+
+let fbApp=null,fbDb=null,fbReady=false;
+
+function initFirebase(){
+  try{
+    if(!firebase||!firebase.apps)return;
+    if(firebase.apps.length===0){
+      fbApp=firebase.initializeApp(FIREBASE_CONFIG);
+    }else{
+      fbApp=firebase.apps[0];
+    }
+    fbDb=firebase.firestore();
+    fbReady=true;
+    console.log("[LIFE OS] Firebase ready ✓");
+    // Charger les habitudes du jour depuis Firestore au démarrage
+    syncHabitsFromFirebase();
+    // Écouter les changements en temps réel sur le document du jour
+    listenTodayHabits();
+  }catch(e){
+    console.warn("[LIFE OS] Firebase init failed (offline mode):",e.message);
+  }
+}
+
+// Sync depuis Firestore → localStorage + state pour une date donnée
+async function fetchHabitDate(dateStr){
+  if(!fbReady||!fbDb)return null;
+  try{
+    const doc=await fbDb.collection("life-os-habits").doc(dateStr).get();
+    if(doc.exists){
+      const data=doc.data();
+      // Retirer les champs méta
+      const {_updatedAt,...habits}=data;
+      return habits;
+    }
+    return null;
+  }catch(e){
+    console.warn("[LIFE OS] fetchHabitDate error:",e.message);
+    return null;
+  }
+}
+
+// Écrire les habitudes d'une date dans Firestore
+async function pushHabitDate(dateStr,habitsObj){
+  if(!fbReady||!fbDb)return;
+  try{
+    await fbDb.collection("life-os-habits").doc(dateStr).set({
+      ...habitsObj,
+      _updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    console.log("[LIFE OS] Firebase ← habits",dateStr,"pushed ✓");
+  }catch(e){
+    console.warn("[LIFE OS] pushHabitDate error:",e.message);
+  }
+}
+
+// Charger les habitudes des 30 derniers jours depuis Firestore
+async function syncHabitsFromFirebase(){
+  if(!fbReady||!fbDb)return;
+  try{
+    const snap=await fbDb.collection("life-os-habits")
+      .where(firebase.firestore.FieldPath.documentId(),">=",`${SY}-01-01`)
+      .get();
+    let changed=false;
+    snap.forEach(doc=>{
+      const dateStr=doc.id;
+      const data=doc.data();
+      const {_updatedAt,...habits}=data;
+      // Merge : Firestore gagne sur localStorage pour les données existantes
+      S.habits[dateStr]=Object.assign({},S.habits[dateStr]||{},habits);
+      changed=true;
+    });
+    if(changed){
+      ldb.s("habits",S.habits);
+      render();
+      console.log("[LIFE OS] Synced",snap.size,"habit days from Firebase ✓");
+    }
+  }catch(e){
+    console.warn("[LIFE OS] syncHabitsFromFirebase error:",e.message);
+  }
+}
+
+// Listener temps réel sur le document du jour
+let todayUnsubscribe=null;
+function listenTodayHabits(){
+  if(!fbReady||!fbDb)return;
+  const today=tds();
+  if(todayUnsubscribe)todayUnsubscribe();
+  todayUnsubscribe=fbDb.collection("life-os-habits").doc(today)
+    .onSnapshot(doc=>{
+      if(doc.exists&&!doc.metadata.hasPendingWrites){
+        const data=doc.data();
+        const {_updatedAt,...habits}=data;
+        const prev=JSON.stringify(S.habits[today]||{});
+        const next=JSON.stringify(Object.assign({},S.habits[today]||{},habits));
+        if(prev!==next){
+          S.habits[today]=Object.assign({},S.habits[today]||{},habits);
+          ldb.s("habits",S.habits);
+          render();
+          console.log("[LIFE OS] Real-time update from Firebase ✓",today);
+        }
+      }
+    },err=>{
+      console.warn("[LIFE OS] listener error:",err.message);
+    });
+}
 
 let S={
-  view:"home",habits:db.g("habits",{}),journals:db.g("journals",{}),
-  finances:db.g("finances",{}),trades:db.g("trades",[]),
+  view:"home",habits:ldb.g("habits",{}),journals:ldb.g("journals",{}),
+  finances:ldb.g("finances",{}),trades:ldb.g("trades",[]),
   selDate:tds(),selMonth:cms(),tradeFilter:"month",
-  showTF:false,tf:freshTF(),notifEnabled:db.g("notif",false),
+  showTF:false,tf:freshTF(),notifEnabled:ldb.g("notif",false),
 };
-function save(){db.s("habits",S.habits);db.s("journals",S.journals);db.s("finances",S.finances);db.s("trades",S.trades)}
+
+function save(){
+  ldb.s("habits",S.habits);
+  ldb.s("journals",S.journals);
+  ldb.s("finances",S.finances);
+  ldb.s("trades",S.trades);
+}
 
 function tds(){const d=new Date();return d.getFullYear()<SY?`${SY}-01-01`:d.toISOString().slice(0,10)}
 function cms(){const d=new Date();return d.getFullYear()<SY?`${SY}-01`:d.toISOString().slice(0,7)}
@@ -527,8 +651,8 @@ function rAnnual(){
 // ─── Actions ───
 function selD(ds){S.selDate=ds;render()}
 function shiftW(dir){const d=new Date(S.selDate+"T12:00:00");d.setDate(d.getDate()+dir*7);const ds=d.toISOString().slice(0,10);if(ds>=`${SY}-01-01`&&ds<=`${SY}-12-31`){S.selDate=ds;render()}}
-function togH(id){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel][id]=!S.habits[sel][id];if(id==="sport"&&!S.habits[sel][id]){delete S.habits[sel].sportType}save();render()}
-function setSportType(type){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel].sportType=type;save();render()}
+function togH(id){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel][id]=!S.habits[sel][id];if(id==="sport"&&!S.habits[sel][id]){delete S.habits[sel].sportType}save();pushHabitDate(sel,S.habits[sel]);render()}
+function setSportType(type){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel].sportType=type;save();pushHabitDate(sel,S.habits[sel]);render()}
 function sHJ(){const el=document.getElementById("hJ");if(el){S.journals[S.selDate]=el.value;save()}}
 function sJD(){const el=document.getElementById("jT");if(el&&el.value.trim()){S.journals[S.selDate]=el.value;save()}}
 function uFin(k,v){const sm=S.selMonth;if(!S.finances[sm])S.finances[sm]={};S.finances[sm][k]=v;save()}
@@ -1097,6 +1221,14 @@ function togglePalier(p){
 
 setTimeout(()=>{render()},400);
 
+</script>
+
+<!-- Firebase CDN (compat mode — doit être chargé après le script principal) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script>
+// Initialiser Firebase après le chargement des CDN
+initFirebase();
 </script>
 </body>
 </html>
