@@ -901,314 +901,131 @@ function hodlAdd(){var s=document.getElementById("hS"),q=document.getElementById
 function hodlDel(i){var h=hodlGet();h.splice(i,1);hodlSet(h);render()}
 
 
-// ═══ SHAPE v2 — COACH MODE ═══
-var shapeTab="board";
-function setShapeTab(t){shapeTab=t;render()}
+// ═══ SHAPE — MINIMALISTE ═══
+// Garde toute la data existante (lo_shape) : weights + days[].session + days[].repas.petit
+// Cards : POIDS (graph ultra-visuel) · SAISIE · SÉANCE PPL · PETIT-DÉJ 30g
+
+var shapePeriod="30"; // 30 / 90 / 365 / all
 function getShape(){try{return JSON.parse(localStorage.getItem("lo_shape")||"{}")}catch(e){return{}}}
 function setShape(d){localStorage.setItem("lo_shape",JSON.stringify(d))}
-function shapeSetQ(k,v){var d=getShape();if(!d.days)d.days={};var t=tds();if(!d.days[t])d.days[t]={};d.days[t][k]=v;setShape(d)}
-
-// Programme
-var PROG_SALLE={
-  push:{
-    titre:"PUSH",
-    desc:"Pecs + \u00c9paules + Triceps",
-    color:"#4dd4e6",
-    exos:[
-      ["D\u00e9velopp\u00e9 couch\u00e9","4 x 10","Barre ou halt\u00e8res, contr\u00f4le la descente"],
-      ["D\u00e9velopp\u00e9 inclin\u00e9","3 x 12","Machine ou halt\u00e8res, 30\u00b0"],
-      ["\u00c9cart\u00e9s poulie/halt\u00e8res","3 x 15","Stretch en bas, squeeze en haut"],
-      ["D\u00e9velopp\u00e9 \u00e9paules","3 x 12","Machine ou halt\u00e8res assis"],
-      ["\u00c9l\u00e9vations lat\u00e9rales","3 x 15","L\u00e9ger, contr\u00f4le total"],
-      ["Dips ou extensions triceps","3 x 12","Machine ou poulie"],
-      ["\ud83d\udeb6 Tapis inclin\u00e9 12%","15 min","Vitesse 5.5-6 km/h"]
-    ]
-  },
-  pull:{
-    titre:"PULL",
-    desc:"Dos + Biceps + Abdos",
-    color:"#3ddba0",
-    exos:[
-      ["Tirage vertical (lat pulldown)","4 x 10","Large, tire avec les coudes"],
-      ["Rowing machine/halt\u00e8res","4 x 10","Serre les omoplates en haut"],
-      ["Face pull poulie","3 x 15","Crucial pour ton dos droit"],
-      ["Curl biceps halt\u00e8res","3 x 12","Altern\u00e9, pas d\u2019\u00e9lan"],
-      ["Curl marteau","3 x 12","Avant-bras + biceps"],
-      ["Crunch machine ou planche","3 x 20s","Gainage 3x40s si pas de machine"],
-      ["\ud83d\udeb6 Tapis inclin\u00e9 12%","20 min","Vitesse 5.5-6 km/h"]
-    ]
-  },
-  legs:{
-    titre:"LEGS + CARDIO",
-    desc:"Jambes + Fessiers + Cardio",
-    color:"#9d6bf0",
-    exos:[
-      ["Presse \u00e0 cuisses","4 x 12","Pieds larges, descends bien"],
-      ["Leg extension","3 x 15","Squeeze en haut 1 sec"],
-      ["Leg curl","3 x 15","Contr\u00f4le la phase n\u00e9gative"],
-      ["Fentes march\u00e9es","3 x 10/jambe","Halt\u00e8res ou poids de corps"],
-      ["Mollets debout","4 x 15","Full amplitude, pause en bas"],
-      ["Crunch + relev\u00e9 de jambes","3 x 15","Abdos inf\u00e9rieurs focus"],
-      ["\ud83d\udeb6 Tapis inclin\u00e9 12%","15 min","Vitesse 5.5-6 km/h"]
-    ]
-  }
-};
-
-var PROG_MAISON={
-  push:{
-    titre:"PUSH MAISON",
-    desc:"Circuit 30min",
-    color:"#4dd4e6",
-    exos:[
-      ["Pompes classiques","4 x 15","Descends poitrine au sol"],
-      ["Pompes pieds sur\u00e9lev\u00e9s","3 x 12","Chaise ou marche"],
-      ["D\u00e9v. \u00e9paules halt\u00e8res","3 x 12","10kg, assis ou debout"],
-      ["\u00c9l\u00e9vations lat\u00e9rales","3 x 15","10kg, lent"],
-      ["Extensions triceps halt\u00e8re","3 x 12","Au dessus de la t\u00eate"],
-      ["Kettlebell swing","3 x 20","Cardio + post\u00e9rieur"],
-      ["Planche","3 x 45s","Gainage strict"]
-    ]
-  },
-  pull:{
-    titre:"PULL MAISON",
-    desc:"Circuit 30min",
-    color:"#3ddba0",
-    exos:[
-      ["Tractions","4 x max","Prise large, descends compl\u00e8tement"],
-      ["Tractions prise serr\u00e9e","3 x max","Supination, biceps focus"],
-      ["Rowing halt\u00e8re 1 bras","3 x 12","10kg, serre l\u2019omoplate"],
-      ["Curl halt\u00e8res","3 x 12","Altern\u00e9"],
-      ["Curl marteau","3 x 12",""],
-      ["Face pull \u00e9lastique","3 x 15","Si tu en as, sinon skip"],
-      ["Crunch + planche","3 x 20 + 40s",""]
-    ]
-  },
-  legs:{
-    titre:"LEGS MAISON",
-    desc:"Circuit 30min",
-    color:"#9d6bf0",
-    exos:[
-      ["Squat goblet kettlebell","4 x 15","Tiens le KB devant toi"],
-      ["Fentes alt. halt\u00e8res","3 x 12/jambe","10kg par main"],
-      ["Pont fessier","3 x 20","KB sur le bassin"],
-      ["Step-ups chaise","3 x 10/jambe","Halt\u00e8res en main"],
-      ["Mollets debout 1 jambe","3 x 15","Sur une marche"],
-      ["Kettlebell swing","3 x 20","Explose des hanches"],
-      ["Planche lat\u00e9rale","3 x 30s/c\u00f4t\u00e9",""]
-    ]
-  }
-};
-
-var JOURS_PROG={"1":"push","3":"pull","5":"legs"};
-
-function getProgDuJour(){
-  var dow=new Date(tds()+"T12:00:00").getDay();
-  return JOURS_PROG[String(dow)]||null;
-}
+function shapeSetPeriod(p){shapePeriod=p;render()}
+function shapeSetWeight(v){var d=getShape();if(!d.weights)d.weights={};var w=parseFloat(v);var t=tds();if(!w||isNaN(w)){delete d.weights[t]}else{d.weights[t]=w}setShape(d);render()}
+function shapeSetSessionType(type){var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};if(d.days[t].sessionType===type&&d.days[t].session){delete d.days[t].session;delete d.days[t].sessionType}else{d.days[t].session=true;d.days[t].sessionType=type}setShape(d);render()}
+function shapeTogglePetitDej(){var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};if(!d.days[t].repas)d.days[t].repas={};d.days[t].repas.petit=!d.days[t].repas.petit;setShape(d);render()}
 
 function rShape(){
-  var data=getShape();var o='<div class="page">';
-  o+='<button class="back-btn" onclick="nav(\x27home\x27)">\u2190 RETOUR</button>';
+  var data=getShape();
+  var weights=data.weights||{};
+  var today=tds();
+  var todayW=weights[today]||"";
+  var dayData=(data.days&&data.days[today])||{};
+  var dayRepas=dayData.repas||{};
+
+  // — Filtre par période —
+  var allDates=Object.keys(weights).sort();
+  var filteredDates=allDates;
+  if(shapePeriod!=="all"&&allDates.length){
+    var days=parseInt(shapePeriod);
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);
+    var cutoffStr=cutoff.toISOString().slice(0,10);
+    filteredDates=allDates.filter(function(d){return d>=cutoffStr});
+  }
+  var filteredData=filteredDates.map(function(d){return weights[d]});
+
+  // — Stats deltas (basées sur date la plus récente, pas today si pas saisi) —
+  var lastDate=allDates.length?allDates[allDates.length-1]:null;
+  var currentW=todayW||(lastDate?weights[lastDate]:0);
+  function findClosest(daysAgo){
+    if(!lastDate)return null;
+    var ref=new Date(lastDate+"T12:00:00");ref.setDate(ref.getDate()-daysAgo);
+    var t=ref.toISOString().slice(0,10);
+    for(var i=allDates.length-1;i>=0;i--){if(allDates[i]<=t)return weights[allDates[i]]}
+    return null;
+  }
+  var d7=findClosest(7),d30=findClosest(30);
+  var delta7=(currentW&&d7!==null)?(currentW-d7):null;
+  var delta30=(currentW&&d30!==null)?(currentW-d30):null;
+  var minW=filteredData.length?Math.min.apply(null,filteredData):0;
+  var maxW=filteredData.length?Math.max.apply(null,filteredData):0;
+
+  // — Streak séances semaine —
+  var sessW=0,wk=weekDates(today);
+  wk.forEach(function(d){if(data.days&&data.days[d]&&data.days[d].session)sessW++});
+
+  var o='<div class="page">';
+  o+='<button class="back-btn" onclick="nav(\x27home\x27)">← RETOUR</button>';
   o+='<h2 class="view-title">SHAPE</h2>';
-  o+='<div style="display:flex;gap:3px;margin-bottom:14px">';
-  ["board","seance","photos"].forEach(function(t){
-    var l=t==="board"?"Board":t==="seance"?"S\u00e9ance":"Photos";
-    o+='<button class="filter-btn '+(shapeTab===t?"active":"")+'" onclick="setShapeTab(\x27'+t+'\x27)" style="flex:1;text-align:center;font-size:10px">'+l+'</button>';
-  });
+
+  // ═══ CARD POIDS — ULTRA VISUEL ═══
+  o+='<div class="glass" style="padding:16px 14px 12px">';
+  o+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">';
+  o+='<div><div style="font-size:9px;color:rgba(0,255,255,0.45);letter-spacing:2.5px;font-weight:600;margin-bottom:4px">POIDS ACTUEL</div>';
+  o+='<div style="font-family:var(--fd);font-size:44px;color:var(--cyan);font-weight:700;text-shadow:var(--glow-cyan);line-height:1">'+(currentW?(typeof currentW==="number"?currentW.toFixed(1):currentW):"—")+'<span style="font-size:16px;color:rgba(255,255,255,0.3);margin-left:6px;font-weight:500">kg</span></div>';
+  if(lastDate&&lastDate!==today)o+='<div style="font-size:9px;color:rgba(255,255,255,0.28);margin-top:4px;letter-spacing:1px">dernière saisie '+lastDate.slice(5).replace("-","/")+'</div>';
   o+='</div>';
-  if(shapeTab==="board")o+=rShpBoard(data);
-  else if(shapeTab==="seance")o+=rShpSeance(data);
-  else o+=rShpPhotos(data);
-  o+='</div>';return o;
-}
-
-// ── BOARD ──
-function rShpBoard(data){
-  var o="",today=tds(),weights=data.weights||{},todayW=weights[today]||"";
-  var dayData=data.days&&data.days[today]?data.days[today]:{};
-
-  // Objectif
-  o+='<div style="text-align:center;margin-bottom:14px"><div style="font-size:9px;color:rgba(0,240,255,0.4);letter-spacing:3px;margin-bottom:4px">OBJECTIF</div><div style="font-family:var(--fd);font-size:22px;color:#fff;font-weight:500">79.5 \u2192 75 kg</div><div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px">Perte de gras \u00b7 Prise de muscle \u00b7 Cardio</div></div>';
-
-  // Poids
-  o+='<div class="glass" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;align-items:center"><span class="card-label" style="color:var(--cyan)">POIDS CE SOIR</span><div style="display:flex;align-items:center;gap:6px"><input class="input" type="number" step="0.1" value="'+todayW+'" placeholder="79.5" style="width:80px;text-align:right;font-size:14px;padding:6px 8px" onblur="shapeSetWeight(this.value)"><span style="font-size:10px;color:rgba(255,255,255,0.25)">kg</span></div></div></div>';
-
-  // Courbe
-  var wDates=Object.keys(weights).sort();
-  if(wDates.length>=2){
-    var wData=wDates.map(function(d){return weights[d]});
-    var minW=Math.min.apply(null,wData),maxW=Math.max.apply(null,wData);
-    o+='<div class="glass"><span class="card-label">COURBE</span><div style="display:flex;justify-content:space-between;margin:6px 0 4px;font-size:9px;color:rgba(255,255,255,0.2)"><span>'+wDates[0].slice(5)+'</span><span style="color:var(--cyan)">'+minW.toFixed(1)+' - '+maxW.toFixed(1)+' kg</span><span>'+wDates[wDates.length-1].slice(5)+'</span></div>';
-    o+=svgLine(wData,"#4dd4e6",60);
-    o+='<div style="text-align:right;margin-top:4px;font-size:10px;color:var(--cyan)">'+wData[wData.length-1].toFixed(1)+' kg</div></div>';
-  }
-
-  // Score du jour /5
-  var score=0;
-  if(dayData.session)score++;
-  if(dayData.repas&&dayData.repas.petit)score++;
-  if(dayData.repas&&dayData.repas.midi)score++;
-  if(dayData.repas&&dayData.repas.soir)score++;
-  if(dayData.eau)score++;
-
-  o+='<div class="glass"><span class="card-label" style="color:#d4a853">AUJOURD\x27HUI</span>';
-  o+='<div style="display:flex;justify-content:center;gap:6px;margin:12px 0">';
-  for(var i=0;i<5;i++)o+='<div style="width:32px;height:4px;border-radius:2px;background:'+(i<score?'var(--green)':'rgba(255,255,255,0.06)')+'"></div>';
-  o+='</div>';
-
-  // Checks
-  var checks=[
-    ["session","\ud83c\udfcb\ufe0f S\u00e9ance faite",dayData.session],
-    ["repas_petit","\ud83c\udf73 Prot\u00e9ine au petit-d\u00e9j",dayData.repas&&dayData.repas.petit],
-    ["repas_midi","\ud83c\udf5b Prot\u00e9ine au d\u00e9j",dayData.repas&&dayData.repas.midi],
-    ["repas_soir","\ud83c\udf19 Prot\u00e9ine au d\u00eener",dayData.repas&&dayData.repas.soir],
-    ["eau","\ud83d\udca7 2L d\x27eau minimum",dayData.eau]
-  ];
-  checks.forEach(function(c){
-    o+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer" onclick="shapeToggle(\x27'+c[0]+'\x27)"><div style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:'+(c[2]?'var(--green)':'var(--bg3)')+';border:'+(c[2]?'none':'1.5px solid rgba(255,255,255,0.08)')+';">'+(c[2]?'<span style="color:#000;font-size:11px;font-weight:900">\u2713</span>':'')+'</div><span style="font-size:13px;color:'+(c[2]?'var(--green)':'rgba(255,255,255,0.4)')+'">'+c[1]+'</span></div>';
-  });
-  o+='</div>';
-
-  // Nutrition tips
-  o+='<div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.015);border-radius:8px"><div style="font-size:8px;color:rgba(212,168,83,0.4);letter-spacing:2px;margin-bottom:8px">QUOI MANGER ?</div>';
-  o+='<div style="font-size:10px;color:rgba(255,255,255,0.3);line-height:1.8">';
-  o+='<div><span style="color:rgba(0,240,255,0.4)">Matin</span> : 2 oeufs OU yaourt grec + amandes OU whey + banane</div>';
-  o+='<div><span style="color:rgba(0,240,255,0.4)">Midi</span> : sandwich/salade avec poulet, thon ou oeuf</div>';
-  o+='<div><span style="color:rgba(0,240,255,0.4)">Soir</span> : viande ou poisson + l\u00e9gumes</div>';
-  o+='<div style="margin-top:4px;color:rgba(232,92,92,0.3)">\u00c9viter : quiche, croissant, panini fromage, plats sans prot\u00e9ine</div>';
-  o+='</div></div>';
-
-  // Semaine
-  var wk=weekDates(today),sessW=0;wk.forEach(function(d){if(data.days&&data.days[d]&&data.days[d].session)sessW++});
-  o+='<div class="glass" style="padding:12px 14px"><div style="display:flex;justify-content:space-between;align-items:center"><span class="card-label">S\u00c9ANCES SEMAINE</span><span style="font-family:var(--fd);font-size:18px;color:'+(sessW>=3?'var(--green)':'#d4a853')+';font-weight:700">'+sessW+' <span style="font-size:12px;color:rgba(255,255,255,0.3)">/ 3</span></span></div></div>';
-
-  // Programme du jour
-  var prog=getProgDuJour();
-  if(prog){
-    var p=PROG_SALLE[prog];
-    o+='<div class="glass" style="border-color:rgba(0,240,255,0.08)"><span class="card-label" style="color:'+p.color+'">AUJOURD\x27HUI : '+p.titre+'</span><div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:2px">'+p.desc+'</div>';
-    o+='<div style="margin-top:10px">';
-    p.exos.slice(0,3).forEach(function(e){
-      o+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px"><span style="color:rgba(255,255,255,0.5)">'+e[0]+'</span><span style="color:rgba(255,255,255,0.25)">'+e[1]+'</span></div>';
-    });
-    o+='<div style="font-size:9px;color:rgba(0,240,255,0.3);margin-top:4px">+ '+(p.exos.length-3)+' exos \u2192 voir S\u00e9ance</div>';
-    o+='</div></div>';
-  }
-
-  // Historique
-  var allH=[];if(data.days)Object.keys(data.days).sort().reverse().forEach(function(d){if(d!==today)allH.push(d)});
-  if(allH.length>0){
-    o+='<div class="glass"><span class="card-label">HISTORIQUE</span><div style="margin-top:8px">';
-    allH.slice(0,14).forEach(function(d){
-      var dd=dobj(d),dy=data.days[d]||{},w=weights[d];
-      var sc2=0;if(dy.session)sc2++;if(dy.repas&&dy.repas.petit)sc2++;if(dy.repas&&dy.repas.midi)sc2++;if(dy.repas&&dy.repas.soir)sc2++;if(dy.eau)sc2++;
-      o+='<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center"><div><span style="font-size:10px;color:rgba(0,240,255,0.5);font-family:var(--fd)">'+dn(d)+' '+dd.getDate()+' '+FS[dd.getMonth()]+'</span>';
-      o+='<span style="font-size:9px;color:rgba(255,255,255,0.2);margin-left:8px">';
-      if(w)o+=w.toFixed(1)+'kg ';
-      if(dy.session)o+='\ud83c\udfcb\ufe0f ';
-      o+='</span></div>';
-      o+='<div style="display:flex;gap:3px">';for(var i=0;i<5;i++)o+='<div style="width:8px;height:3px;border-radius:1px;background:'+(i<sc2?'var(--green)':'rgba(255,255,255,0.05)')+'"></div>';
-      o+='</div></div>';
+  if(delta7!==null||delta30!==null){
+    o+='<div style="text-align:right;display:flex;flex-direction:column;gap:8px">';
+    [["7 JOURS",delta7],["30 JOURS",delta30]].forEach(function(it){
+      if(it[1]===null)return;
+      var v=it[1],sign=v>0?"+":"";
+      var col=v<-0.05?"var(--green)":v>0.05?"var(--red)":"rgba(255,255,255,0.4)";
+      o+='<div><div style="font-size:14px;font-family:var(--fd);color:'+col+';font-weight:700">'+sign+v.toFixed(1)+' kg</div><div style="font-size:8px;color:rgba(255,255,255,0.3);letter-spacing:1.5px;font-weight:600">'+it[0]+'</div></div>';
     });
     o+='</div>';
   }
+  o+='</div>';
+
+  // — Graphique large —
+  if(filteredData.length>=2){
+    o+='<div style="margin:6px -2px 6px">'+svgLine(filteredData,"#00ffff",200)+'</div>';
+    o+='<div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.3);font-family:var(--fd);letter-spacing:1px;padding:0 2px">';
+    o+='<span>'+filteredDates[0].slice(5).replace("-","/")+'</span>';
+    o+='<span style="color:rgba(0,255,255,0.55)">min '+minW.toFixed(1)+' · max '+maxW.toFixed(1)+'</span>';
+    o+='<span>'+filteredDates[filteredDates.length-1].slice(5).replace("-","/")+'</span>';
+    o+='</div>';
+  }else{
+    o+='<div style="text-align:center;padding:60px 0;font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:1px">2 saisies minimum pour afficher la courbe</div>';
+  }
+
+  // — Filtres période —
+  o+='<div style="display:flex;gap:4px;margin-top:12px">';
+  [["30","30J"],["90","90J"],["365","1AN"],["all","TOUT"]].forEach(function(p){
+    o+='<button class="filter-btn '+(shapePeriod===p[0]?"active":"")+'" onclick="shapeSetPeriod(\x27'+p[0]+'\x27)" style="flex:1;text-align:center;font-size:10px">'+p[1]+'</button>';
+  });
+  o+='</div>';
+  o+='</div>'; // /glass POIDS
+
+  // ═══ SAISIE POIDS DU JOUR ═══
+  o+='<div class="glass" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center"><span class="card-label" style="color:var(--cyan)">POIDS AUJOURD\x27HUI</span>';
+  o+='<div style="display:flex;align-items:center;gap:6px"><input class="input" type="number" step="0.1" value="'+todayW+'" placeholder="—" style="width:100px;text-align:right;font-size:17px;padding:8px 10px;font-family:var(--fd);font-weight:700;color:var(--cyan)" onblur="shapeSetWeight(this.value)"><span style="font-size:11px;color:rgba(255,255,255,0.3)">kg</span></div></div></div>';
+
+  // ═══ SÉANCE — PPL + PADEL ═══
+  var sType=dayData.sessionType||"";
+  var done=!!dayData.session;
+  o+='<div class="glass">';
+  o+='<div style="display:flex;justify-content:space-between;align-items:center"><span class="card-label" style="color:'+(done?'var(--green)':'rgba(255,255,255,0.4)')+'">SÉANCE'+(done?' ✓':'')+'</span>';
+  o+='<span style="font-family:var(--fd);font-size:14px;color:'+(sessW>=3?'var(--green)':'#d4a853')+';font-weight:700">'+sessW+'<span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:500"> / 3 sem.</span></span>';
+  o+='</div>';
+  o+='<div style="display:flex;gap:6px;margin-top:12px">';
+  [["push","PUSH","#4dd4e6"],["pull","PULL","#00ff9d"],["legs","LEGS","#bf5fff"],["padel","PADEL","#ff7c20"]].forEach(function(s){
+    var active=done&&sType===s[0];
+    o+='<button onclick="shapeSetSessionType(\x27'+s[0]+'\x27)" style="flex:1;padding:14px 4px;border-radius:10px;border:1.5px solid '+(active?s[2]:'rgba(255,255,255,0.06)')+';background:'+(active?s[2]+'1f':'var(--bg2)')+';color:'+(active?s[2]:'rgba(255,255,255,0.45)')+';font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all 0.2s;'+(active?'box-shadow:0 0 20px '+s[2]+'55':'')+'">'+s[1]+'</button>';
+  });
+  o+='</div>';
+  o+='<div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:8px;text-align:center;letter-spacing:1px">tape sur le type pour valider · retape pour annuler</div>';
+  o+='</div>';
+
+  // ═══ PETIT-DÉJ 30G PROTÉINES ═══
+  var petit=!!dayRepas.petit;
+  o+='<div class="glass" onclick="shapeTogglePetitDej()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:16px 18px">';
+  o+='<div style="display:flex;align-items:center;gap:14px"><span style="font-size:26px;'+(petit?'filter:drop-shadow(0 0 14px rgba(0,255,157,0.7))':'filter:grayscale(0.85) opacity(0.4)')+'">🍳</span>';
+  o+='<div><div style="font-size:14px;font-weight:600;color:'+(petit?'var(--green)':'rgba(255,255,255,0.5)')+'">Petit-déj 30g protéines</div><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;letter-spacing:0.5px">Règle immuable</div></div></div>';
+  o+='<div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+(petit?'var(--green)':'var(--bg3)')+';border:'+(petit?'none':'1.5px solid rgba(255,255,255,0.08)')+';'+(petit?'box-shadow:var(--glow-green)':'')+'">'+(petit?'<span style="color:#000;font-weight:900;font-size:16px">✓</span>':'')+'</div>';
+  o+='</div>';
+
+  o+='</div>'; // /page
   return o;
 }
-
-// ── SEANCE ──
-function rShpSeance(data){
-  var o="",today=tds(),dayData=data.days&&data.days[today]?data.days[today]:{};
-  var mode=dayData.mode||"salle";
-
-  // Mode toggle
-  o+='<div style="display:flex;gap:6px;margin-bottom:14px">';
-  o+='<button class="filter-btn '+(mode==="salle"?"active":"")+'" onclick="shapeSetQ(\x27mode\x27,\x27salle\x27);render()" style="flex:1;text-align:center">\ud83c\udfcb\ufe0f SALLE</button>';
-  o+='<button class="filter-btn '+(mode==="maison"?"active":"")+'" onclick="shapeSetQ(\x27mode\x27,\x27maison\x27);render()" style="flex:1;text-align:center">\ud83c\udfe0 MAISON</button>';
-  o+='</div>';
-
-  // Quel jour ?
-  var dow=new Date(today+"T12:00:00").getDay();
-  var progKey=JOURS_PROG[String(dow)];
-  var source=mode==="salle"?PROG_SALLE:PROG_MAISON;
-
-  if(!progKey){
-    // Jour off ou weekend
-    o+='<div class="glass" style="text-align:center;padding:24px"><div style="font-size:24px;margin-bottom:8px">\ud83c\udfd6\ufe0f</div><div style="font-size:13px;color:rgba(255,255,255,0.4)">Jour de repos</div><div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px">Padel ce weekend ?</div></div>';
-    // But allow manual session selection
-    o+='<div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:10px">Ou choisis un programme :</div>';
-    o+='<div style="display:flex;gap:6px;margin-bottom:14px">';
-    Object.keys(source).forEach(function(k){
-      var p=source[k];
-      o+='<button class="filter-btn" onclick="shapeForceDay(\x27'+k+'\x27)" style="flex:1;text-align:center;font-size:9px;color:'+p.color+'">'+p.titre+'</button>';
-    });
-    o+='</div>';
-  }
-
-  // Show programme (forced or day-based)
-  var showKey=dayData.forcedProg||progKey;
-  if(showKey&&source[showKey]){
-    var p=source[showKey];
-    o+='<div class="glass" style="border-color:'+p.color+'20"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><span class="card-label" style="color:'+p.color+'">'+p.titre+'</span><div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:2px">'+p.desc+'</div></div><span style="font-size:9px;color:rgba(255,255,255,0.15)">'+mode.toUpperCase()+'</span></div>';
-    p.exos.forEach(function(e,i){
-      o+='<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.02)"><div style="font-family:var(--fd);font-size:9px;color:'+p.color+';min-width:16px;margin-top:2px">'+(i+1)+'</div><div style="flex:1"><div style="font-size:12px;color:rgba(255,255,255,0.6)">'+e[0]+'</div><div style="display:flex;justify-content:space-between;margin-top:2px"><span style="font-size:10px;color:rgba(255,255,255,0.3)">'+e[1]+'</span></div>'+(e[2]?'<div style="font-size:9px;color:rgba(255,255,255,0.15);margin-top:1px">'+e[2]+'</div>':'')+'</div></div>';
-    });
-    o+='</div>';
-  }
-
-  // Log s\u00e9ance
-  o+='<div class="glass"><span class="card-label" style="color:var(--cyan)">LOG</span><div style="margin-top:10px">';
-  o+='<div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:8px;color:rgba(255,255,255,0.3);margin-bottom:4px">DUR\u00c9E (min)</div><input class="input" type="number" value="'+(dayData.duration||"")+'" placeholder="45" style="font-size:12px" onblur="shapeSetQ(\x27duration\x27,this.value)"></div><div style="flex:1"><div style="font-size:8px;color:rgba(255,255,255,0.3);margin-bottom:4px">INTENSIT\u00c9 /10</div><input class="input" type="number" min="1" max="10" value="'+(dayData.intensity||"")+'" placeholder="7" style="font-size:12px" onblur="shapeSetQ(\x27intensity\x27,this.value)"></div></div>';
-  o+='<div style="margin-top:8px"><div style="font-size:8px;color:rgba(255,255,255,0.3);margin-bottom:4px">NOTES</div><textarea class="textarea" placeholder="Comment \u00e7a s\x27est pass\u00e9..." onblur="shapeSetQ(\x27notes\x27,this.value)" style="min-height:50px">'+(dayData.notes||"")+'</textarea></div>';
-  if(!dayData.session)o+='<button onclick="shapeSetDay(\x27session\x27,true)" class="btn-primary" style="margin-top:8px">\u2713 VALIDER LA S\u00c9ANCE</button>';
-  else o+='<div style="text-align:center;margin-top:8px;padding:10px;background:rgba(61,219,160,0.05);border-radius:8px;border:1px solid rgba(61,219,160,0.1)"><span style="color:var(--green);font-size:12px;font-weight:600">\u2713 S\u00c9ANCE VALID\u00c9E</span></div><button onclick="shapeClear()" style="width:100%;margin-top:6px;padding:6px;border-radius:8px;border:1px solid rgba(232,92,92,0.08);background:none;color:rgba(255,255,255,0.15);font-size:9px;cursor:pointer">Supprimer</button>';
-  o+='</div>';
-
-  // Planning semaine
-  o+='<div class="glass"><span class="card-label">PLANNING</span><div style="margin-top:10px">';
-  [["LUN","PUSH","#4dd4e6"],["MAR","Repos",""],["MER","PULL","#3ddba0"],["JEU","Repos",""],["VEN","LEGS","#9d6bf0"],["SAM","Padel","#e8943a"],["DIM","Repos",""]].forEach(function(j){
-    o+='<div style="display:flex;align-items:center;gap:10px;padding:4px 0"><div style="font-family:var(--fd);font-size:9px;color:rgba(255,255,255,0.3);min-width:28px">'+j[0]+'</div><span style="font-size:11px;color:'+(j[2]||'rgba(255,255,255,0.15)')+'">'+j[1]+'</span></div>';
-  });
-  o+='</div></div>';
-
-  // Historique
-  var allS=data.days?Object.keys(data.days).filter(function(d){return data.days[d].session}).sort().reverse().slice(0,10):[];
-  if(allS.length>0){
-    o+='<div class="glass"><span class="card-label">HISTORIQUE</span><div style="margin-top:8px">';
-    allS.forEach(function(d){
-      var s=data.days[d],dd=dobj(d);
-      o+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.02)"><div><span style="font-size:10px;color:rgba(0,240,255,0.5)">'+dn(d)+' '+dd.getDate()+' '+FS[dd.getMonth()]+'</span><span style="font-size:10px;color:rgba(255,255,255,0.25);margin-left:8px">'+(s.mode||"salle")+'</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-size:9px;color:rgba(255,255,255,0.2)">'+(s.duration||"?")+'min</span><button onclick="shapeDelDate(\x27'+d+'\x27)" style="background:none;border:none;color:rgba(255,255,255,0.1);cursor:pointer;font-size:10px">\u00d7</button></div></div>';
-    });
-    o+='</div>';
-  }
-  return o;
-}
-
-// ── PHOTOS ──
-function rShpPhotos(data){
-  var o="",photos=data.photos||[];
-  o+='<div class="glass"><span class="card-label" style="color:#d4a853">TRANSFORMATION</span><div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px;margin-bottom:12px">1 photo/semaine \u2014 m\u00eame pose</div>';
-  o+='<button onclick="shapePhoto()" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(0,240,255,0.15);background:rgba(0,240,255,0.03);color:rgba(0,240,255,0.6);font-size:11px;cursor:pointer;margin-bottom:12px">\ud83d\udcf7 AJOUTER</button>';
-  if(photos.length>0){o+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';photos.slice().reverse().forEach(function(p,i){var idx=photos.length-1-i;o+='<div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.04)"><img src="'+p.src+'" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"><div style="position:absolute;bottom:0;left:0;right:0;padding:6px 8px;background:linear-gradient(transparent,rgba(0,0,0,0.8))"><span style="font-size:9px;color:rgba(255,255,255,0.6)">'+p.date+'</span></div><button onclick="shapeDelPhoto('+idx+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:10px;padding:2px 6px;border-radius:4px">\u00d7</button></div>'});o+='</div>'}
-  else o+='<div style="text-align:center;padding:30px 0;color:rgba(255,255,255,0.12);font-size:12px">Prends ta premi\u00e8re photo</div>';
-  o+='</div>';return o;
-}
-
-// ── ACTIONS ──
-function shapeSetWeight(v){var d=getShape();if(!d.weights)d.weights={};d.weights[tds()]=parseFloat(v)||0;setShape(d)}
-function shapeSetDay(k,v){var d=getShape();if(!d.days)d.days={};var t=tds();if(!d.days[t])d.days[t]={};d.days[t][k]=v;setShape(d);render()}
-function shapeToggle(k){
-  var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};
-  if(k.startsWith("repas_")){
-    var meal=k.split("_")[1];if(!d.days[t].repas)d.days[t].repas={};
-    d.days[t].repas[meal]=!d.days[t].repas[meal];
-  }else{d.days[t][k]=!d.days[t][k]}
-  setShape(d);render();
-}
-function shapeForceDay(k){var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};d.days[t].forcedProg=k;setShape(d);render()}
-function shapeClear(){var d=getShape(),t=tds();if(d.days&&d.days[t]){delete d.days[t].session;delete d.days[t].duration;delete d.days[t].intensity;delete d.days[t].notes;delete d.days[t].forcedProg;setShape(d);render()}}
-function shapeDelDate(date){var d=getShape();if(d.days&&d.days[date]){delete d.days[date].session;delete d.days[date].duration;delete d.days[date].intensity;delete d.days[date].notes;setShape(d);render()}}
-function shapePhoto(){var inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){var d=getShape();if(!d.photos)d.photos=[];d.photos.push({src:ev.target.result,date:tds()});setShape(d);render()};r.readAsDataURL(f)};inp.click()}
-function shapeDelPhoto(i){var d=getShape();if(d.photos)d.photos.splice(i,1);setShape(d);render()}
 
 
 // EVENT DELEGATION for iOS Safari
