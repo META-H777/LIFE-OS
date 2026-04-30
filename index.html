@@ -301,11 +301,8 @@ function sportStats(ym) {
   for(let d=1;d<=days;d++){
     const ds=`${ym}-${String(d).padStart(2,"0")}`;
     const h=S.habits[ds]||{};
-    if(h.sportType){
-      if(h.sportType==="tapis")counts.tapis++;
-      if(h.sportType==="muscu")counts.muscu++;
-      if(h.sportType==="padel")counts.padel++;
-    }
+    const types=Array.isArray(h.sportTypes)?h.sportTypes:(h.sportType?[h.sportType]:[]);
+    types.forEach(t=>{if(counts[t]!==undefined)counts[t]++});
   }
   return counts;
 }
@@ -419,7 +416,7 @@ function rHome(){
       <span style="font-family:var(--fd);color:${comp===5?"var(--green)":"var(--cyan)"};font-size:18px;font-weight:700">${comp}<span style="color:var(--td);font-size:14px">/5</span></span>
     </div>
     <div style="display:flex;gap:6px">${HABITS.map(h=>{const done=th[h.id];return`<div style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:${done?h.color+"15":"var(--bg2)"};border:1px solid ${done?h.color+"35":"var(--w06)"}"><div style="font-size:20px;${done?`filter:drop-shadow(0 0 8px ${h.color})`:"filter:grayscale(1) opacity(0.3)"}">${h.icon}</div><div style="width:16px;height:3px;border-radius:2px;margin:6px auto 0;background:${done?h.color:"var(--w08)"};${done?`box-shadow:0 0 8px ${h.color}50`:""}"></div></div>`}).join("")}</div>
-    ${th.sport && th.sportType ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--cyan)">Aujourd'hui : <strong>${SPORTS.find(s=>s.id===th.sportType)?.icon||""} ${th.sportType.charAt(0).toUpperCase()+th.sportType.slice(1)}</strong></div>` : ""}
+    ${(()=>{const ts=Array.isArray(th.sportTypes)?th.sportTypes:(th.sportType?[th.sportType]:[]);return th.sport&&ts.length?`<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--cyan)">Aujourd'hui : <strong>${ts.map(t=>{const s=SPORTS.find(x=>x.id===t);return s?s.icon+" "+s.label:t}).join(" + ")}</strong></div>`:""})()}
   </div>
 
   <!-- Month chart -->
@@ -499,7 +496,7 @@ function rHabits(){
     </button>
     ${h.hasSub&&done?`<div style="background:rgba(0,240,255,0.05);border:1px solid rgba(0,240,255,0.15);border-top:none;border-radius:0 0 12px 12px;padding:8px 12px;margin-bottom:5px">
       <div style="font-size:9px;color:var(--tm);margin-bottom:4px;letter-spacing:1px;font-weight:600">TYPE DE SPORT</div>
-      <div class="sport-sub">${SPORTS.map(sp=>`<button class="sport-chip ${dh.sportType===sp.id?"active":""}" onclick="setSportType('${sp.id}')">${sp.icon} ${sp.label}</button>`).join("")}</div>
+      <div class="sport-sub">${(()=>{const ts=Array.isArray(dh.sportTypes)?dh.sportTypes:(dh.sportType?[dh.sportType]:[]);return SPORTS.map(sp=>`<button class="sport-chip ${ts.includes(sp.id)?"active":""}" onclick="setSportType('${sp.id}')">${sp.icon} ${sp.label}</button>`).join("")})()}</div>
     </div>`:""}</div>`}).join("")}
 
   <div class="glass" style="margin-top:10px">
@@ -660,8 +657,8 @@ function rAnnual(){
 // ─── Actions ───
 function selD(ds){S.selDate=ds;render()}
 function shiftW(dir){const d=new Date(S.selDate+"T12:00:00");d.setDate(d.getDate()+dir*7);const ds=d.toISOString().slice(0,10);if(ds>=`${SY}-01-01`&&ds<=`${SY}-12-31`){S.selDate=ds;render()}}
-function togH(id){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel][id]=!S.habits[sel][id];if(id==="sport"&&!S.habits[sel][id]){delete S.habits[sel].sportType}save();pushHabitDate(sel,S.habits[sel]);render()}
-function setSportType(type){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel].sportType=type;save();pushHabitDate(sel,S.habits[sel]);render()}
+function togH(id){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};S.habits[sel][id]=!S.habits[sel][id];if(id==="sport"&&!S.habits[sel][id]){delete S.habits[sel].sportType;delete S.habits[sel].sportTypes}save();pushHabitDate(sel,S.habits[sel]);render()}
+function setSportType(type){const sel=S.selDate;if(!S.habits[sel])S.habits[sel]={};const cur=S.habits[sel];const arr=Array.isArray(cur.sportTypes)?cur.sportTypes.slice():(cur.sportType?[cur.sportType]:[]);const i=arr.indexOf(type);if(i>=0)arr.splice(i,1);else arr.push(type);if(arr.length===0){delete cur.sportType;delete cur.sportTypes}else{cur.sportTypes=arr;cur.sportType=arr[0]}save();pushHabitDate(sel,cur);render()}
 function sHJ(){const el=document.getElementById("hJ");if(el){S.journals[S.selDate]=el.value;save()}}
 function sJD(){const el=document.getElementById("jT");if(el&&el.value.trim()){S.journals[S.selDate]=el.value;save()}}
 function uFin(k,v){const sm=S.selMonth;if(!S.finances[sm])S.finances[sm]={};S.finances[sm][k]=v;save()}
@@ -910,7 +907,7 @@ function getShape(){try{return JSON.parse(localStorage.getItem("lo_shape")||"{}"
 function setShape(d){localStorage.setItem("lo_shape",JSON.stringify(d))}
 function shapeSetPeriod(p){shapePeriod=p;render()}
 function shapeSetWeight(v){var d=getShape();if(!d.weights)d.weights={};var w=parseFloat(v);var t=tds();if(!w||isNaN(w)){delete d.weights[t]}else{d.weights[t]=w}setShape(d);render()}
-function shapeSetSessionType(type){var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};if(d.days[t].sessionType===type&&d.days[t].session){delete d.days[t].session;delete d.days[t].sessionType}else{d.days[t].session=true;d.days[t].sessionType=type}setShape(d);render()}
+function shapeSetSessionType(type){var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};var cur=d.days[t];var arr=Array.isArray(cur.sessionTypes)?cur.sessionTypes.slice():(cur.sessionType?[cur.sessionType]:[]);var i=arr.indexOf(type);if(i>=0)arr.splice(i,1);else arr.push(type);if(arr.length===0){delete cur.session;delete cur.sessionType;delete cur.sessionTypes}else{cur.session=true;cur.sessionTypes=arr;cur.sessionType=arr[0]}setShape(d);render()}
 function shapeTogglePetitDej(){var d=getShape(),t=tds();if(!d.days)d.days={};if(!d.days[t])d.days[t]={};if(!d.days[t].repas)d.days[t].repas={};d.days[t].repas.petit=!d.days[t].repas.petit;setShape(d);render()}
 
 function rShape(){
@@ -1000,7 +997,7 @@ function rShape(){
   o+='<div style="display:flex;align-items:center;gap:6px"><input class="input" type="number" step="0.1" value="'+todayW+'" placeholder="—" style="width:100px;text-align:right;font-size:17px;padding:8px 10px;font-family:var(--fd);font-weight:700;color:var(--cyan)" onblur="shapeSetWeight(this.value)"><span style="font-size:11px;color:rgba(255,255,255,0.3)">kg</span></div></div></div>';
 
   // ═══ SÉANCE — PPL + PADEL ═══
-  var sType=dayData.sessionType||"";
+  var sTypes=Array.isArray(dayData.sessionTypes)?dayData.sessionTypes:(dayData.sessionType?[dayData.sessionType]:[]);
   var done=!!dayData.session;
   o+='<div class="glass">';
   o+='<div style="display:flex;justify-content:space-between;align-items:center"><span class="card-label" style="color:'+(done?'var(--green)':'rgba(255,255,255,0.4)')+'">SÉANCE'+(done?' ✓':'')+'</span>';
@@ -1008,7 +1005,7 @@ function rShape(){
   o+='</div>';
   o+='<div style="display:flex;gap:6px;margin-top:12px">';
   [["push","PUSH","#4dd4e6"],["pull","PULL","#00ff9d"],["legs","LEGS","#bf5fff"],["padel","PADEL","#ff7c20"]].forEach(function(s){
-    var active=done&&sType===s[0];
+    var active=done&&sTypes.indexOf(s[0])>=0;
     o+='<button onclick="shapeSetSessionType(\x27'+s[0]+'\x27)" style="flex:1;padding:14px 4px;border-radius:10px;border:1.5px solid '+(active?s[2]:'rgba(255,255,255,0.06)')+';background:'+(active?s[2]+'1f':'var(--bg2)')+';color:'+(active?s[2]:'rgba(255,255,255,0.45)')+';font-family:var(--fd);font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all 0.2s;'+(active?'box-shadow:0 0 20px '+s[2]+'55':'')+'">'+s[1]+'</button>';
   });
   o+='</div>';
